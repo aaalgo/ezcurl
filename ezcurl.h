@@ -6,14 +6,36 @@
 #include <unordered_map>
 #include <sstream>
 #include <stdexcept>
+#include <boost/lexical_cast.hpp>
 #include <boost/assert.hpp>
 
 namespace ezcurl {
     using std::string;
     using std::runtime_error;
+    using std::ostream;
     using std::istringstream;
     using std::ostringstream;
     using std::unordered_map;
+    using boost::lexical_cast;
+
+    void urlencode (ostream &ss, string const &s) {
+        static const char lookup[]= "0123456789abcdef";
+        for (char c: s) {
+            if ( (48 <= c && c <= 57) ||//0-9
+                 (65 <= c && c <= 90) ||//abc...xyz
+                 (97 <= c && c <= 122) || //ABC...XYZ
+                 (c=='-' || c=='_' || c=='.' || c=='~')
+            ) {
+                ss.put(c);
+            }
+            else
+            {
+                ss.put('%');
+                ss.put(lookup[(c&0xF0)>>4]);
+                ss.put(lookup[(c&0x0F)]);
+            }
+        }
+    }   
 
     class Curl {
         static size_t read_callback (void *ptr, size_t size, size_t count, void *stream) {
