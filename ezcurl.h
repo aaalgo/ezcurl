@@ -57,16 +57,24 @@ namespace ezcurl {
 
         // these values must not be release during the life spam of form
         void add (string const &name, string const *value) {
-            curl_formadd(&formpost, &lastptr,
+            CURLFORMcode res = curl_formadd(&formpost, &lastptr,
                          CURLFORM_COPYNAME, name.c_str(),
                          CURLFORM_PTRCONTENTS, &(*value)[0],
-                         CURLFORM_CONTENTLEN, value->size());
+                         CURLFORM_CONTENTLEN, curl_off_t(value->size()),
+                         CURLFORM_END);
+            if (res != 0) {
+                throw runtime_error("curl form: " + boost::lexical_cast<string>(res));
+            }
         }
 
         void add_file (string const &name, string const &file) {
-            curl_formadd(&formpost, &lastptr,
+            CURLFORMcode res = curl_formadd(&formpost, &lastptr,
                          CURLFORM_COPYNAME, name.c_str(),
-                         CURLFORM_FILE, file.c_str());
+                         CURLFORM_FILE, file.c_str(),
+                         CURLFORM_END);
+            if (res != CURLE_OK) {
+                throw runtime_error("curl form: " + boost::lexical_cast<string>(res));
+            }
         }
 
         friend class CURL;
