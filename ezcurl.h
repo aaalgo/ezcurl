@@ -18,6 +18,13 @@ namespace ezcurl {
     using std::unordered_map;
     using boost::lexical_cast;
 
+    // call this in multi-thread app before anything else 
+    // for single threaded app, no need to call this
+    void GlobalInit () {
+        curl_global_init(CURL_GLOBAL_ALL);
+    }
+
+
     void urlencode (ostream &ss, string const &s) {
         static const char lookup[]= "0123456789abcdef";
         for (char c: s) {
@@ -36,6 +43,36 @@ namespace ezcurl {
             }
         }
     }   
+
+    struct Form {
+        struct curl_httppost *formpost;
+        struct curl_httppost *lastptr;
+
+        Form (): formpost(nullptr), lastptr(nullptr) {
+        }
+
+        ~Form () {
+            curl_formfree(formpost);
+        }
+
+        // these values must not be release during the life spam of form
+        void add (string const &name, string const *value) {
+            curl_formadd(&formpost, &lastptr,
+                         CURLFORM_COPYNAME, name.c_str(),
+                         CURLFORM_PTRCONTENTS, &(*value)[0],
+                         CURLFORM_CONTENTLEN, value->size());
+        }
+
+        void add_file (string const &name, string const &file) {
+            curl_formadd(&formpost, &lastptr,
+                         CURLFORM_COPYNAME, name.c_str(),
+                         CURLFORM_FILE, file.c_str());
+        }
+
+        friend class CURL;
+
+    };
+
 
     class Curl {
         static size_t read_callback (void *ptr, size_t size, size_t count, void *stream) {
@@ -83,6 +120,26 @@ namespace ezcurl {
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &oss);
             //curl_easy_setopt(curl, CURLOPT_POST, 1); // implied
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, input.c_str());
+            if (headers) {
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            }
+            CURLcode res = curl_easy_perform(curl);
+            if (res != CURLE_OK) {
+                throw runtime_error("curl:" + string(curl_easy_strerror(res)));
+            }
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, nullptr);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, 0);
+            curl_easy_setopt(curl, CURLOPT_POST, 0);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, nullptr);
+            *blob = oss.str();
+        }
+
+        void post (string const &url, Form const &form, string *blob, struct curl_slist *headers = nullptr) {
+            ostringstream oss;
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &oss);
+            //curl_easy_setopt(curl, CURLOPT_POST, 1); // implied
+            curl_easy_setopt(curl, CURLOPT_HTTPPOST, form.formpost);
             if (headers) {
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
             }
