@@ -56,6 +56,7 @@ namespace ezcurl {
         }
 
         // these values must not be release during the life spam of form
+#ifndef EZCURL_COMPAT
         void add (string const &name, string const *value) {
             CURLFORMcode res = curl_formadd(&formpost, &lastptr,
                          CURLFORM_COPYNAME, name.c_str(),
@@ -66,6 +67,7 @@ namespace ezcurl {
                 throw runtime_error("curl form: " + boost::lexical_cast<string>(res));
             }
         }
+#endif
 
         void add_file (string const &name, string const &file) {
             CURLFORMcode res = curl_formadd(&formpost, &lastptr,
