@@ -20,12 +20,12 @@ namespace ezcurl {
 
     // call this in multi-thread app before anything else 
     // for single threaded app, no need to call this
-    void GlobalInit () {
+    static inline void GlobalInit () {
         curl_global_init(CURL_GLOBAL_ALL);
     }
 
 
-    void urlencode (ostream &ss, string const &s) {
+    static inline void urlencode (ostream &ss, string const &s) {
         static const char lookup[]= "0123456789abcdef";
         for (char c: s) {
             if ( (48 <= c && c <= 57) ||//0-9
@@ -74,7 +74,7 @@ namespace ezcurl {
                          CURLFORM_COPYNAME, name.c_str(),
                          CURLFORM_FILE, file.c_str(),
                          CURLFORM_END);
-            if (res != CURLE_OK) {
+            if (res != 0) {
                 throw runtime_error("curl form: " + boost::lexical_cast<string>(res));
             }
         }
